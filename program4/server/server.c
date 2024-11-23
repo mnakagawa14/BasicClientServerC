@@ -7,7 +7,8 @@
 #include <unistd.h>
 
 #define BACKLOG 1
-#define MESSAGE "Hello Michael. ICS 451 is fun!\n"
+#define INPUT_FILE_NAME "input_img.png"
+#define BUFFER_SIZE 1024
 
 /**
 * NAME : Michael Nakagawa
@@ -37,7 +38,8 @@ int main(int argc, char *argv[])
     int port;
     struct sockaddr_in serv_addr, cli_addr;
     socklen_t clilen;
-    FILE* output_file;
+    FILE *output_file, *input_file;
+    char buffer;
 
     stop_running = 0;
 
@@ -69,7 +71,6 @@ int main(int argc, char *argv[])
             stop_running = 1;
         }
     }
-
 
     /* Create socket(IPv4, TCP) */ 
     if (!stop_running)
@@ -147,11 +148,31 @@ int main(int argc, char *argv[])
         {
             printf("Accepted connection from client: %s:%d\n", inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
             fprintf(output_file, "Accepted connection from client: %s:%d\n", inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
-            
+
             printf("Sending message to client\n");
             fprintf(output_file, "Sending message to client\n");
             write(newsockfd, MESSAGE, strlen(MESSAGE));
 
+            /* Open image file */
+            input_file = fopen(INPUT_FILE_NAME, "rb");
+            if (input_file == NULL) {
+                printf("Error opening image file: %s\n", INPUT_FILE_NAME);
+                fprintf(output_file, "Error opening image file: %s\n", INPUT_FILE_NAME);
+                close(newsockfd);
+                fclose(output_file);
+                stop_running = 1;
+            }
+
+            if (!stop_running)
+            {
+                /* Read file and send to client */
+                buffer[BUFFER_SIZE];
+                size_t bytes_read;
+                while ((bytes_read = fread(buffer, 1, BUFFER_SIZE, input_file)) > 0) {
+                    send(newsockfd, buffer, bytes_read, 0);
+                }
+            }
+            
             close(newsockfd);
             printf("Closed connection to client\n");
             fprintf(output_file, "Closed connection to client\n");
