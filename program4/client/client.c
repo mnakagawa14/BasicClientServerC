@@ -17,7 +17,8 @@ int main(int argc, char* argv[]) {
     int sockfd;
     FILE *output_log, *output_file;
     struct sockaddr_in serv_addr;
-    char buffer;
+    char buffer[BUFFER_SIZE];
+    ssize_t bytes_received;
 
     /* Open output log file in append mode */
     output_log = fopen("output_client.txt", "a");
@@ -95,11 +96,14 @@ int main(int argc, char* argv[]) {
     }
 
     /* Receive data */
-    buffer[BUFFER_SIZE];
-    ssize_t bytes_received;
+
     while ((bytes_received = recv(sockfd, buffer, sizeof(buffer), 0)) > 0) {
         fwrite(buffer, 1, bytes_received, output_file);
     }
+
+    printf("File received and saved to %s\n", OUTPUT_FILE_NAME);
+    fprintf(output_log, "File received and saved to %s\n", OUTPUT_FILE_NAME);
+    fclose(output_log);
 
     fclose(output_file);
     
@@ -107,10 +111,6 @@ int main(int argc, char* argv[]) {
     {
         close(sockfd);
     }
-
-    printf("File received and saved to %s\n", OUTPUT_FILE_NAME);
-    fprintf(output_log, "File received and saved to %s\n", OUTPUT_FILE_NAME);
-    fclose(output_log);
 
     return 0;
 }
