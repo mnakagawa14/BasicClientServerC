@@ -187,10 +187,10 @@ int main(int argc, char *argv[])
             tcp_header2.destination_port = tcp_header1.source_port;
             tcp_header2.seq_num = tcp_header1.ack_num;
             tcp_header2.ack_num = tcp_header1.seq_num + htons(1);
-            tcp_header2.flags = 0x0012; /* Set the SYN and ACK flag */
-            tcp_header2.window_size = 17520;
-            tcp_header2.checksum = 0xFFFF;
-            tcp_header2.urgent_pointer = 0;
+            tcp_header2.flags = htonl(0x0012); /* Set the SYN and ACK flag */
+            tcp_header2.window_size = htons(17520);
+            tcp_header2.checksum = htons(0xffff);
+            tcp_header2.urgent_pointer = htons(0);
 
             /* Send tcp_header2*/
             if (send(newsockfd, &tcp_header2, sizeof(tcp_header2), 0) < 0) {
