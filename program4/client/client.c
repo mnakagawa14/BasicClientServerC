@@ -240,7 +240,6 @@ int main(int argc, char* argv[]) {
             stop_running = 1;
         }
         else {
-            memcpy(tcp_header2, buffer, sizeof(*tcp_header2));
             printf("tcp_header2 received\n");
             fprintf(output_log, "tcp_header2 received\n");
             print_header_hex(tcp_header2, output_log);
@@ -253,8 +252,8 @@ int main(int argc, char* argv[]) {
         /* Create tcp_header3 */
         tcp_header3->source_port = tcp_header2->destination_port;
         tcp_header3->destination_port = tcp_header2->source_port;
-        tcp_header3->seq_num = tcp_header2->ack_num;
-        tcp_header3->ack_num = tcp_header2->seq_num + htons(1);
+        tcp_header3->seq_num = htonl(ntohl(tcp_header1->seq_num) + 1);
+        tcp_header3->ack_num = htonl(ntohl(tcp_header2->seq_num) + 1);
         tcp_header3->flags = htons(0x0010); /* Set the ACK flag */
         tcp_header3->window_size = htons(17520);
         tcp_header3->checksum = htons(0xffff);
