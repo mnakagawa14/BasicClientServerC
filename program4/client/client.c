@@ -147,8 +147,8 @@ int main(int argc, char* argv[]) {
             stop_running = 1;
         }
         else {
-            printf("tcp_header1 sent successfully.\n");
-            fprintf(output_log, "tcp_header1 sent successfully.\n");
+            printf("tcp_header1 sent successfully.\n\n");
+            fprintf(output_log, "tcp_header1 sent successfully.\n\n");
         }
     }
 
