@@ -13,23 +13,38 @@
 /**
 * NAME : Michael Nakagawa
 *
-* HOMEWORK : 4
+* HOMEWORK : 8
 *
 * CLASS : ICS 451
 *
 * INSTRUCTOR : Ravi Narayan
 *
-* DATE : October 13, 2024
+* DATE : November 24, 2024
 *
 * FILE : server.c
 *
-* DESCRIPTION : This file contains the server for hw4.
+* DESCRIPTION : This file contains the server for hw8.
 *               User is expected to provide port number as a command line argument.
-*               Server will listen for connections, send a simple message to the client,
-*               close the connection, and continue listening.
+*               Server will listen for connections, simulates a three-way TCP handshake,
+*               and sends a png.
 *               Server logs to output_server.txt.
-*               Currently, the server will run infinitely.
 **/
+
+/* struct to represent TCP header */
+struct fake_tcp_header
+{
+    unsigned short source_port;
+    unsigned short destination_port;
+    unsigned long seq_num;
+    unsigned long ack_num;
+    unsigned short flags; /* Includes data offset and reserved bits */
+    unsigned short window_size;
+    unsigned short checksum;
+    unsigned short urgent_pointer;
+};
+
+void print_header_hex(struct fake_tcp_header* header, FILE* output_file);
+void print_tcp_header_details(struct fake_tcp_header* header, FILE* output_file);
 
 int main(int argc, char *argv[])
 {
@@ -40,8 +55,8 @@ int main(int argc, char *argv[])
     socklen_t clilen;
     FILE *output_file, *input_file;
     char buffer[BUFFER_SIZE];
-    size_t bytes_read;
-
+    ssize_t bytes_read, bytes_received;
+    struct fake_tcp_header tcp_header1, tcp_header2, tcp_header3;
     stop_running = 0;
 
     /* Open output log file in append mode */
@@ -60,6 +75,7 @@ int main(int argc, char *argv[])
         fclose(output_file);
         stop_running = 1;
     }
+
     /* Get port number */
     else
     {
@@ -85,7 +101,6 @@ int main(int argc, char *argv[])
             stop_running = 1;
         }
     }
-    
     
     if (!stop_running)
     {
@@ -121,18 +136,10 @@ int main(int argc, char *argv[])
         }
     }
 
-    fclose(output_file);
-
     /* Loop to accept and handle clients */
     while (!stop_running) 
     {
-        output_file = fopen("output_server.txt", "a");
-
-        if (output_file == NULL) {
-            printf("Error opening output_server.txt\n");
-            stop_running = 1;
-        }
-
+        /* Accept connection from client */
         memset(&cli_addr, 0, sizeof(cli_addr));
         clilen = sizeof(cli_addr);
 
@@ -149,7 +156,78 @@ int main(int argc, char *argv[])
         {
             printf("Accepted connection from client: %s:%d\n", inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
             fprintf(output_file, "Accepted connection from client: %s:%d\n", inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
+        }
 
+        /* Receive tcp_header1 from client */
+        if (!stop_running)
+        {
+            bytes_received = recv(newsockfd, &tcp_header1, sizeof(tcp_header1), 0);
+            if (bytes_received < 0) {
+                printf("Error receiving tcp_header1\n");
+                fprintf(output_file, "Error receiving tcp_header1\n");
+                stop_running = 1;
+            }
+            else if (bytes_received == 0) {
+                printf("Client closed connection.\n");
+                fprintf(output_file, "Client closed connection.\n");
+                stop_running = 1;
+            }
+            else {
+                printf("tcp_header1 received successfully.\n");
+                fprintf(output_file, "tcp_header1 received successfully.\n");
+                print_header_hex(&tcp_header1, output_file);
+                print_tcp_header_details(&tcp_header1, output_file);
+            }
+        }
+
+        if (!stop_running)
+        {
+            /* Create tcp_header2 */
+            tcp_header2.source_port = tcp_header1.destination_port;
+            tcp_header2.destination_port = tcp_header1.source_port;
+            tcp_header2.seq_num = tcp_header1.ack_num;
+            tcp_header2.ack_num = tcp_header1.seq_num + 1;
+            tcp_header2.flags = 0x0012; /* Set the SYN and ACK flag */
+            tcp_header2.window_size = 17520;
+            tcp_header2.checksum = 0xFFFF;
+            tcp_header2.urgent_pointer = 0;
+
+            /* Send tcp_header2*/
+            if (send(newsockfd, &tcp_header2, sizeof(tcp_header2), 0) < 0) {
+                printf("Failed to send tcp_header2\n");
+                fprintf(output_file, "Failed to send tcp_header2\n");
+                stop_running = 1;
+            }
+            else {
+                printf("tcp_header2 sent successfully.\n\n");
+                fprintf(output_file, "tcp_header2 sent successfully.\n\n");
+            }
+        }
+
+        /* Receive tcp_header3 from the client */
+        if (!stop_running) {
+            bytes_received = recv(newsockfd, &tcp_header3, sizeof(tcp_header3), 0);
+            if (bytes_received < 0) {
+                printf("Error receiving tcp_header3\n");
+                fprintf(output_file, "Error receiving tcp_header3\n");
+                stop_running = 1;
+            }
+            else if (bytes_received == 0) {
+                printf("Client closed connection.\n");
+                fprintf(output_file, "Client closed connection.\n");
+                stop_running = 1;
+            }
+            else {
+                printf("tcp_header3 received successfully.\n");
+                fprintf(output_file, "tcp_header3 received successfully.\n");
+                print_header_hex(&tcp_header3, output_file);
+                print_tcp_header_details(&tcp_header3, output_file);
+            }
+        }
+
+        if (!stop_running)
+        {
+            
             printf("Sending file to client\n");
             fprintf(output_file, "Sending file to client\n");
 
@@ -185,4 +263,67 @@ int main(int argc, char *argv[])
     }
 
     return 0;
+}
+
+/*
+ * Helper function to print fake_tcp_header as hexadecimal
+ * Prints to both console and output file.
+ */
+void print_header_hex(struct fake_tcp_header* header, FILE* output_file) {
+    unsigned char* bytes = (unsigned char*)header;
+    size_t header_size = sizeof(struct fake_tcp_header);
+    size_t i;
+
+    printf("Raw header:\n");
+    fprintf(output_file, "Raw header:\n");
+
+    for (i = 0; i < header_size; ++i) {
+        printf("%02X ", bytes[i]);
+        fprintf(output_file, "%02X ", bytes[i]);
+
+        if ((i + 1) % 8 == 0) {
+            printf("\n");
+            fprintf(output_file, "\n");
+        }
+    }
+    printf("\n");
+    fprintf(output_file, "\n");
+}
+
+/*
+ * Helper function to print TCP header details in decimal and binary
+ * Prints to both the console and the output file.
+ */
+void print_tcp_header_details(struct fake_tcp_header* header, FILE* output_file) {
+    unsigned short flags;
+    
+    /* Print to console */ 
+    printf("TCP Header Details:\n");
+    printf("Source Port: %u\n", ntohs(header->source_port));
+    printf("Destination Port: %u\n", ntohs(header->destination_port));
+    printf("Sequence Number: %u\n", ntohl(header->seq_num));
+    printf("Acknowledgment Number: %u\n", ntohl(header->ack_num));
+    printf("Control Bits: ");
+
+    /* Print to file */
+    fprintf(output_file, "TCP Header Details:\n");
+    fprintf(output_file, "Source Port: %u\n", ntohs(header->source_port));
+    fprintf(output_file, "Destination Port: %u\n", ntohs(header->destination_port));
+    fprintf(output_file, "Sequence Number: %u\n", ntohl(header->seq_num));
+    fprintf(output_file, "Acknowledgment Number: %u\n", ntohl(header->ack_num));
+    fprintf(output_file, "Control Bits: ");
+
+    /* Extract control bits */ 
+    flags = ntohs(header->flags);
+    if (flags & 0x0001) { printf("FIN "); fprintf(output_file, "FIN "); }
+    if (flags & 0x0002) { printf("SYN "); fprintf(output_file, "SYN "); }
+    if (flags & 0x0004) { printf("RST "); fprintf(output_file, "RST "); }
+    if (flags & 0x0008) { printf("PSH "); fprintf(output_file, "PSH "); }
+    if (flags & 0x0010) { printf("ACK "); fprintf(output_file, "ACK "); }
+    if (flags & 0x0020) { printf("URG "); fprintf(output_file, "URG "); }
+    if (flags & 0x0040) { printf("ECE "); fprintf(output_file, "ECE "); }
+    if (flags & 0x0080) { printf("CWR "); fprintf(output_file, "CWR "); }
+
+    printf("\n\n");
+    fprintf(output_file, "\n\n");
 }
