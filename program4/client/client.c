@@ -9,6 +9,27 @@
 #define BUFFER_SIZE 1024
 #define OUTPUT_FILE_NAME "output.png"
 
+/**
+* NAME : Michael Nakagawa
+*
+* HOMEWORK : 8
+*
+* CLASS : ICS 451
+*
+* INSTRUCTOR : Ravi Narayan
+*
+* DATE : November 24, 2024
+*
+* FILE : client.c
+*
+* DESCRIPTION : This file contains the client for hw8.
+*               User is expected to provide server port number as a command line argument.
+*               Server will listen for connections, simulates a three-way TCP handshake,
+*               and receive a png.
+*               Server logs to output_client.txt.
+**/
+
+/* struct to represent TCP header */
 struct fake_tcp_header
 {
     unsigned short source_port;
@@ -21,68 +42,8 @@ struct fake_tcp_header
     unsigned short urgent_pointer;
 };
 
-/*
- * Helper function to print fake_tcp_header as hexadecimal
- * Prints to both console and output file.
- */
-void print_header_hex(struct fake_tcp_header* header, FILE* output_file) {
-    unsigned char* bytes = (unsigned char*)header;
-    size_t header_size = sizeof(struct fake_tcp_header);
-    size_t i;
-
-    printf("Raw header:\n");
-    fprintf(output_file, "Raw header:\n");
-
-    for (i = 0; i < header_size; ++i) {
-        printf("%02X ", bytes[i]);
-        fprintf(output_file, "%02X ", bytes[i]);
-
-        if ((i + 1) % 8 == 0) {
-            printf("\n");
-            fprintf(output_file, "\n");
-        }
-    }
-    printf("\n");
-    fprintf(output_file, "\n");
-}
-
-/*
- * Helper function to print TCP header details in decimal and binary
- * Prints to both the console and the output file.
- */
-void print_tcp_header_details(struct fake_tcp_header* header, FILE* output_file) {
-    unsigned short flags;
-
-    /* Print to console */
-    printf("TCP Header Details:\n");
-    printf("Source Port: %u\n", ntohs(header->source_port));
-    printf("Destination Port: %u\n", ntohs(header->destination_port));
-    printf("Sequence Number: %u\n", ntohl(header->seq_num));
-    printf("Acknowledgment Number: %u\n", ntohl(header->ack_num));
-    printf("Control Bits: ");
-
-    /* Print to file */
-    fprintf(output_file, "TCP Header Details:\n");
-    fprintf(output_file, "Source Port: %u\n", ntohs(header->source_port));
-    fprintf(output_file, "Destination Port: %u\n", ntohs(header->destination_port));
-    fprintf(output_file, "Sequence Number: %u\n", ntohl(header->seq_num));
-    fprintf(output_file, "Acknowledgment Number: %u\n", ntohl(header->ack_num));
-    fprintf(output_file, "Control Bits: ");
-
-    /* Extract control bits */
-    flags = ntohs(header->flags);
-    if (flags & 0x0001) { printf("FIN "); fprintf(output_file, "FIN "); }
-    if (flags & 0x0002) { printf("SYN "); fprintf(output_file, "SYN "); }
-    if (flags & 0x0004) { printf("RST "); fprintf(output_file, "RST "); }
-    if (flags & 0x0008) { printf("PSH "); fprintf(output_file, "PSH "); }
-    if (flags & 0x0010) { printf("ACK "); fprintf(output_file, "ACK "); }
-    if (flags & 0x0020) { printf("URG "); fprintf(output_file, "URG "); }
-    if (flags & 0x0040) { printf("ECE "); fprintf(output_file, "ECE "); }
-    if (flags & 0x0080) { printf("CWR "); fprintf(output_file, "CWR "); }
-
-    printf("\n\n");
-    fprintf(output_file, "\n\n");
-}
+void print_header_hex(struct fake_tcp_header* header, FILE* output_file);
+void print_tcp_header_details(struct fake_tcp_header* header, FILE* output_file);
 
 int main(int argc, char* argv[]) {
 
@@ -105,24 +66,17 @@ int main(int argc, char* argv[]) {
         stop_running = 1;
     }
 
-    if (argc < 3)
+    if (argc < 2)
     {
-        printf("Usage: %s <server_ip> <server_port>\n", argv[0]);
-        fprintf(output_log, "Usage: %s <server_ip> <server_port>\n", argv[0]);
+        printf("Usage: %s <server_port>\n", argv[0]);
+        fprintf(output_log, "Usage: %s <server_port>\n", argv[0]);
         stop_running = 1;
     }
     else {
-        /* Get server IP and port number */
-        if (strcmp(argv[1], "localhost") == 0)
-        {
-            server_ip = "127.0.0.1";
-        }
-        else
-        {
-            server_ip = argv[1];
-        }
+            
+        server_ip = "127.0.0.1";
 
-        port = atoi(argv[2]);
+        port = atoi(argv[1]);
         if (port <= 0)
         {
             printf("Invalid port number: %d\n", port);
@@ -197,9 +151,9 @@ int main(int argc, char* argv[]) {
         addr_len = sizeof(local_addr);
         if (getsockname(sockfd, (struct sockaddr*)&local_addr, &addr_len) == 0) {
 
-            tcp_header1->source_port = ntohs(local_addr.sin_port);
+            tcp_header1->source_port = local_addr.sin_port;
             tcp_header1->destination_port = htons(port);
-            tcp_header1->seq_num = htonl(1); /* CHANGE_ME */
+            tcp_header1->seq_num = htonl((unsigned long) rand());
             tcp_header1->ack_num = htonl(0);
             tcp_header1->flags = htons(0x0002);  /* Syn only */
             tcp_header1->window_size = htons(17520);
@@ -254,7 +208,7 @@ int main(int argc, char* argv[]) {
         tcp_header3->destination_port = tcp_header2->source_port;
         tcp_header3->seq_num = htonl(ntohl(tcp_header1->seq_num) + 1);
         tcp_header3->ack_num = htonl(ntohl(tcp_header2->seq_num) + 1);
-        tcp_header3->flags = htons(0x0010); /* Set the ACK flag */
+        tcp_header3->flags = htons(0x0010); /* Set the ACK flag only */
         tcp_header3->window_size = htons(17520);
         tcp_header3->checksum = htons(0xffff);
         tcp_header3->urgent_pointer = htons(0);;
@@ -290,10 +244,76 @@ int main(int argc, char* argv[]) {
         close(sockfd);
     }
 
+    printf("Closed connection to server\n");
+    fprintf(output_file, "Closed connection to server\n");
+
     /* Free allocated memory */
     free(tcp_header1);
     free(tcp_header2);
     free(tcp_header3);
 
     return 0;
+}
+
+/*
+ * Helper function to print fake_tcp_header as hexadecimal
+ * Prints to both console and output file.
+ */
+void print_header_hex(struct fake_tcp_header* header, FILE* output_file) {
+    unsigned char* bytes = (unsigned char*)header;
+    size_t header_size = sizeof(struct fake_tcp_header);
+    size_t i;
+
+    printf("Raw header:\n");
+    fprintf(output_file, "Raw header:\n");
+
+    for (i = 0; i < header_size; ++i) {
+        printf("%02X ", bytes[i]);
+        fprintf(output_file, "%02X ", bytes[i]);
+
+        if ((i + 1) % 8 == 0) {
+            printf("\n");
+            fprintf(output_file, "\n");
+        }
+    }
+    printf("\n");
+    fprintf(output_file, "\n");
+}
+
+/*
+ * Helper function to print TCP header details in decimal and binary
+ * Prints to both the console and the output file.
+ */
+void print_tcp_header_details(struct fake_tcp_header* header, FILE* output_file) {
+    unsigned short flags;
+
+    /* Print to console */
+    printf("TCP Header Details:\n");
+    printf("Source Port: %u\n", ntohs(header->source_port));
+    printf("Destination Port: %u\n", ntohs(header->destination_port));
+    printf("Sequence Number: %u\n", ntohl(header->seq_num));
+    printf("Acknowledgment Number: %u\n", ntohl(header->ack_num));
+    printf("Control Bits: ");
+
+    /* Print to file */
+    fprintf(output_file, "TCP Header Details:\n");
+    fprintf(output_file, "Source Port: %u\n", ntohs(header->source_port));
+    fprintf(output_file, "Destination Port: %u\n", ntohs(header->destination_port));
+    fprintf(output_file, "Sequence Number: %u\n", ntohl(header->seq_num));
+    fprintf(output_file, "Acknowledgment Number: %u\n", ntohl(header->ack_num));
+    fprintf(output_file, "Control Bits: ");
+
+    /* Extract control bits */
+    flags = ntohs(header->flags);
+    if (flags & 0x0001) { printf("FIN "); fprintf(output_file, "FIN "); }
+    if (flags & 0x0002) { printf("SYN "); fprintf(output_file, "SYN "); }
+    if (flags & 0x0004) { printf("RST "); fprintf(output_file, "RST "); }
+    if (flags & 0x0008) { printf("PSH "); fprintf(output_file, "PSH "); }
+    if (flags & 0x0010) { printf("ACK "); fprintf(output_file, "ACK "); }
+    if (flags & 0x0020) { printf("URG "); fprintf(output_file, "URG "); }
+    if (flags & 0x0040) { printf("ECE "); fprintf(output_file, "ECE "); }
+    if (flags & 0x0080) { printf("CWR "); fprintf(output_file, "CWR "); }
+
+    printf("\n\n");
+    fprintf(output_file, "\n\n");
 }

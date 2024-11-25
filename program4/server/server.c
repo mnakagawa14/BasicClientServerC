@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
             /* Create tcp_header2 */
             tcp_header2.source_port = tcp_header1.destination_port;
             tcp_header2.destination_port = tcp_header1.source_port;
-            tcp_header2.seq_num = htonl(10);
+            tcp_header2.seq_num = htonl((unsigned long) rand());
             tcp_header2.ack_num = htonl(ntohl(tcp_header1.seq_num) + 1);
             tcp_header2.flags = htons(0x0012); /* Set the SYN and ACK flag */
             tcp_header2.window_size = htons(17520);
@@ -248,18 +248,18 @@ int main(int argc, char *argv[])
                     send(newsockfd, buffer, bytes_read, 0);
                 }
             }
-            
-            close(newsockfd);
+
+            if (sockfd >= 0)
+            {
+                close(sockfd);
+            }
+
             printf("Closed connection to client\n");
             fprintf(output_file, "Closed connection to client\n");
+            stop_running = 1;
         }
 
         fclose(output_file);
-    }
-    
-    if (sockfd >= 0)
-    {
-        close(sockfd);
     }
 
     return 0;
