@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <time.h>
 
 #define BUFFER_SIZE 1024
 #define OUTPUT_FILE_NAME "output.png"
@@ -143,6 +144,9 @@ int main(int argc, char* argv[]) {
             close(sockfd);
             stop_running = 1;
         }
+
+        printf("Connected to server\n\n");
+        fprintf(output_log, "Connected to server\n\n");
     }
 
     /* Create tcp_header1 */
@@ -150,10 +154,11 @@ int main(int argc, char* argv[]) {
     {
         addr_len = sizeof(local_addr);
         if (getsockname(sockfd, (struct sockaddr*)&local_addr, &addr_len) == 0) {
+            srand(time(NULL));
 
             tcp_header1->source_port = local_addr.sin_port;
             tcp_header1->destination_port = htons(port);
-            tcp_header1->seq_num = htonl((unsigned long) rand());
+            tcp_header1->seq_num = htonl(rand() % 1231);
             tcp_header1->ack_num = htonl(0);
             tcp_header1->flags = htons(0x0002);  /* Syn only */
             tcp_header1->window_size = htons(17520);

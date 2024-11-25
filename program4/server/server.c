@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <time.h>
 
 #define BACKLOG 1
 #define INPUT_FILE_NAME "input_img.png"
@@ -154,8 +155,8 @@ int main(int argc, char *argv[])
 
         if (!stop_running)
         {
-            printf("Accepted connection from client: %s:%d\n", inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
-            fprintf(output_file, "Accepted connection from client: %s:%d\n", inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
+            printf("Accepted connection from client: %s:%d\n\n", inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
+            fprintf(output_file, "Accepted connection from client: %s:%d\n\n", inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
         }
 
         /* Receive tcp_header1 from client */
@@ -183,9 +184,11 @@ int main(int argc, char *argv[])
         if (!stop_running)
         {
             /* Create tcp_header2 */
+            srand(time(NULL));
+
             tcp_header2.source_port = tcp_header1.destination_port;
             tcp_header2.destination_port = tcp_header1.source_port;
-            tcp_header2.seq_num = htonl((unsigned long) rand());
+            tcp_header2.seq_num = htonl(rand() % 9879);
             tcp_header2.ack_num = htonl(ntohl(tcp_header1.seq_num) + 1);
             tcp_header2.flags = htons(0x0012); /* Set the SYN and ACK flag */
             tcp_header2.window_size = htons(17520);
